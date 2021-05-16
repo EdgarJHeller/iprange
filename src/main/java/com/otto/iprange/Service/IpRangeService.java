@@ -12,6 +12,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Locale;
 
 @Service
@@ -22,43 +23,43 @@ public class IpRangeService {
 
         //Return the ip-ranges for one region.
         if (validRegions.contains(region)) {
-            ArrayList<String> regionArr = new ArrayList<>(Arrays.asList(region));
-            return getValidIpRanges(regionArr);
+            ArrayList<String> regionArr = new ArrayList<>(Collections.singletonList(region));
+            return getIpRangesFromJson(regionArr);
         }
         //Return the ip-ranges for all valid regions.
         if (region.equals("ALL")) {
-            return getValidIpRanges(validRegions);
+            return getIpRangesFromJson(validRegions);
         }
         return "no valid region";
 
     }
 
-    private String getValidIpRanges(ArrayList<String> validRegions) throws IOException {
+    private String getIpRangesFromJson(ArrayList<String> validRegions) throws IOException {
         String url = "https://ip-ranges.amazonaws.com/ip-ranges.json";
 
+        //Read JSON
         JSONObject ipRangeJson = readJsonFromUrl(url);
         JSONArray prefixesArr = ipRangeJson.getJSONArray("prefixes");
 
-        String ipRangeList = "";
+        //Build IP range list as multiline String
+        StringBuilder ipRangeList = new StringBuilder();
         for (int i=0; i<prefixesArr.length();i++) {
             if (validRegions.contains(prefixesArr.getJSONObject(i).getString("region").substring(0,2).toUpperCase(Locale.ROOT))) {
                 String ip_prefix = prefixesArr.getJSONObject(i).getString("ip_prefix");
-                ipRangeList += ip_prefix + "\n";
+                ipRangeList.append(ip_prefix);
+                ipRangeList.append("\n");
             }
         }
 
-        return ipRangeList;
+        return String.valueOf(ipRangeList);
 
     }
 
     private JSONObject readJsonFromUrl(String url) throws IOException {
-        InputStream is = new URL(url).openStream();
-        try {
+        try (InputStream is = new URL(url).openStream()) {
             BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             String jsonText = readAll(rd);
             return new JSONObject(jsonText);
-        } finally {
-            is.close();
         }
     }
 
